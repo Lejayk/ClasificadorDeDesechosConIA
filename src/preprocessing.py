@@ -6,6 +6,7 @@ Incluye normalización, augmentación y preparación de datos para entrenamiento
 import os
 import numpy as np
 import cv2
+import shutil
 from pathlib import Path
 from typing import Tuple, List, Optional
 import tensorflow as tf
@@ -19,7 +20,7 @@ class DataPreprocessor:
     """
     
     def __init__(self, 
-                 img_size: Tuple[int, int] = (224, 224),
+                 img_size: Tuple[int, int] = (64, 64),
                  batch_size: int = 32):
         """
         Inicializa el preprocesador.
@@ -117,6 +118,100 @@ class DataPreprocessor:
         )
         
         return train_generator, validation_generator
+
+    def create_test_generator(self, test_dir: str):
+        """
+        Crea un generador de test sin augmentación.
+
+        Args:
+            test_dir: Directorio con datos de test organizados por clase
+
+        Returns:
+            Generador de test
+        """
+        test_datagen = ImageDataGenerator(rescale=1./255)
+
+        return test_datagen.flow_from_directory(
+            test_dir,
+            target_size=self.img_size,
+            batch_size=self.batch_size,
+            class_mode='categorical',
+            shuffle=False
+        )
+
+    def create_train_test_split(self,
+                                data_dir: str,
+                                output_dir: str = 'data/processed/trashnet_split',
+                                test_split: float = 0.25,
+                                random_state: int = 42,
+                                overwrite: bool = False) -> Tuple[str, str]:
+        """
+        Crea una partición reproducible train/test (ej. 75/25) a partir de un directorio por clases.
+
+        Args:
+            data_dir: Directorio fuente con imágenes organizadas por clase
+            output_dir: Directorio de salida para split generado
+            test_split: Proporción para test
+            random_state: Semilla para reproducibilidad
+            overwrite: Si True, elimina split previo y lo regenera
+
+        Returns:
+            Tupla (train_dir, test_dir)
+        """
+        source_path = Path(data_dir)
+        if not source_path.exists():
+            raise ValueError(f"El directorio fuente no existe: {data_dir}")
+
+        output_path = Path(output_dir)
+        train_path = output_path / 'train'
+        test_path = output_path / 'test'
+
+        if overwrite and output_path.exists():
+            shutil.rmtree(output_path)
+
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        valid_ext = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+        class_dirs = sorted([d for d in source_path.iterdir() if d.is_dir()])
+
+        if not class_dirs:
+            raise ValueError(f"No se encontraron clases en: {data_dir}")
+
+        for class_dir in class_dirs:
+            class_name = class_dir.name
+            class_files = sorted([
+                p for p in class_dir.iterdir()
+                if p.is_file() and p.suffix.lower() in valid_ext
+            ])
+
+            if len(class_files) < 2:
+                raise ValueError(
+                    f"La clase '{class_name}' requiere al menos 2 imágenes para split train/test"
+                )
+
+            train_files, test_files = train_test_split(
+                class_files,
+                test_size=test_split,
+                random_state=random_state,
+                shuffle=True
+            )
+
+            class_train_path = train_path / class_name
+            class_test_path = test_path / class_name
+            class_train_path.mkdir(parents=True, exist_ok=True)
+            class_test_path.mkdir(parents=True, exist_ok=True)
+
+            for file_path in train_files:
+                destination = class_train_path / file_path.name
+                if not destination.exists():
+                    shutil.copy2(file_path, destination)
+
+            for file_path in test_files:
+                destination = class_test_path / file_path.name
+                if not destination.exists():
+                    shutil.copy2(file_path, destination)
+
+        return str(train_path), str(test_path)
     
     def preprocess_batch(self, images: np.ndarray) -> np.ndarray:
         """

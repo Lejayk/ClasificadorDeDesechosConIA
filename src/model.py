@@ -17,7 +17,7 @@ class WasteClassificationModel:
     
     def __init__(self, 
                  num_classes: int,
-                 img_size: Tuple[int, int] = (224, 224),
+                 img_size: Tuple[int, int] = (64, 64),
                  architecture: str = 'custom_cnn'):
         """
         Inicializa el modelo.
@@ -40,33 +40,26 @@ class WasteClassificationModel:
             Modelo Keras
         """
         model = models.Sequential([
-            # Primera capa convolucional
-            layers.Conv2D(32, (3, 3), activation='relu', 
-                         input_shape=(*self.img_size, 3)),
+            layers.Input(shape=(*self.img_size, 3)),
+
+            # Bloque 1
+            layers.Conv2D(32, (2, 2), strides=1, padding='same', activation='relu'),
             layers.MaxPooling2D((2, 2)),
-            layers.BatchNormalization(),
-            
-            # Segunda capa convolucional
-            layers.Conv2D(64, (3, 3), activation='relu'),
+            layers.Dropout(0.2),
+
+            # Bloque 2
+            layers.Conv2D(32, (2, 2), strides=1, padding='same', activation='relu'),
             layers.MaxPooling2D((2, 2)),
-            layers.BatchNormalization(),
-            
-            # Tercera capa convolucional
-            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.Dropout(0.2),
+
+            # Bloque 3
+            layers.Conv2D(32, (2, 2), strides=1, padding='same', activation='relu'),
             layers.MaxPooling2D((2, 2)),
-            layers.BatchNormalization(),
-            
-            # Cuarta capa convolucional
-            layers.Conv2D(128, (3, 3), activation='relu'),
-            layers.MaxPooling2D((2, 2)),
-            layers.BatchNormalization(),
-            
-            # Capas densas
+            layers.Dropout(0.2),
+
+            # Clasificador
             layers.Flatten(),
             layers.Dense(512, activation='relu'),
-            layers.Dropout(0.5),
-            layers.Dense(256, activation='relu'),
-            layers.Dropout(0.3),
             layers.Dense(self.num_classes, activation='softmax')
         ])
         

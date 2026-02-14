@@ -10,12 +10,12 @@ Sistema inteligente de detección y clasificación de residuos utilizando técni
 
 Este proyecto implementa un sistema completo de clasificación de residuos que puede identificar automáticamente las siguientes categorías:
 
-- 🔷 **Plástico**: Botellas, envases, bolsas
-- 📄 **Papel**: Documentos, periódicos, cartulina
-- 🔳 **Vidrio**: Botellas, frascos, cristales
-- 🌱 **Orgánico**: Restos de comida, cáscaras
-- ⚙️ **Metal**: Latas, envases metálicos
-- 📦 **Cartón**: Cajas, empaques
+- 🔳 **Glass**: Botellas y frascos de vidrio
+- 📄 **Paper**: Hojas, periódicos, impresos
+- 📦 **Cardboard**: Cajas y empaques de cartón
+- 🔷 **Plastic**: Botellas, envases, bolsas
+- ⚙️ **Metal**: Latas y envases metálicos
+- 🗑️ **Trash**: Residuos no reciclables
 
 ## ✨ Características
 
@@ -46,18 +46,18 @@ Organiza tus imágenes en la siguiente estructura:
 
 ```
 data/raw/
-├── plastico/
-├── papel/
-├── vidrio/
-├── organico/
+├── glass/
+├── paper/
+├── cardboard/
+├── plastic/
 ├── metal/
-└── carton/
+└── trash/
 ```
 
 ### Entrenar el Modelo
 
 ```bash
-python train_model.py --data-dir data/raw --epochs 50
+python train_model.py --data-dir data/raw --epochs 70 --img-size 64
 ```
 
 ### Clasificar Imágenes
@@ -136,7 +136,8 @@ python train_model.py \
 ```bash
 python evaluate_model.py \
     --test-dir data/test \
-    --model models/waste_classifier_custom_cnn_best.h5
+    --model models/waste_classifier_custom_cnn_best.h5 \
+    --img-size 64
 ```
 
 ### Predicción con Visualización
@@ -145,7 +146,13 @@ python evaluate_model.py \
 python predict.py \
     --image test.jpg \
     --output resultado.png \
-    --top-k 3
+    --top-k 3 \
+    --img-size 64
+
+# Predicción robusta (suavizado defensivo)
+python predict.py \
+    --image test.jpg \
+    --smoothing-method gaussian
 ```
 
 ## 📝 Scripts Disponibles

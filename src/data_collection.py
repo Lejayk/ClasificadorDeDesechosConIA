@@ -27,12 +27,12 @@ class DataCollector:
         
         # Categorías de residuos
         self.categories = [
-            'plastico',
-            'papel',
-            'vidrio',
-            'organico',
+            'glass',
+            'paper',
+            'cardboard',
+            'plastic',
             'metal',
-            'carton'
+            'trash'
         ]
     
     def create_category_directories(self) -> None:

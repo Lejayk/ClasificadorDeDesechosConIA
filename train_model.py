@@ -20,11 +20,11 @@ def main():
                        help='Directorio con datos de entrenamiento')
     parser.add_argument('--output-dir', type=str, default='models',
                        help='Directorio para guardar modelos')
-    parser.add_argument('--epochs', type=int, default=50,
+    parser.add_argument('--epochs', type=int, default=70,
                        help='Número de épocas de entrenamiento')
     parser.add_argument('--batch-size', type=int, default=32,
                        help='Tamaño de lote')
-    parser.add_argument('--img-size', type=int, default=224,
+    parser.add_argument('--img-size', type=int, default=64,
                        help='Tamaño de imagen')
     parser.add_argument('--architecture', type=str, default='custom_cnn',
                        choices=['custom_cnn', 'mobilenet', 'resnet', 'efficientnet'],
@@ -33,8 +33,22 @@ def main():
                        help='Tasa de aprendizaje')
     parser.add_argument('--validation-split', type=float, default=0.2,
                        help='Proporción de datos para validación')
+    parser.add_argument('--test-dir', type=str, default='data/test',
+                       help='Directorio de test externo (opcional, para política 75/25 + validación interna)')
+    parser.add_argument('--test-split', type=float, default=0.25,
+                       help='Proporción para test cuando se genera split automático desde --data-dir')
+    parser.add_argument('--split-output-dir', type=str, default='data/processed/trashnet_split',
+                       help='Directorio donde guardar split automático train/test')
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Semilla para split reproducible')
     parser.add_argument('--no-augmentation', action='store_true',
                        help='Desactivar data augmentation')
+    parser.add_argument('--fgsm-epsilon', type=float, default=0.0078,
+                       help='Magnitud FGSM (ej. 0.0078 = 2/255). Use 0 para desactivar entrenamiento adversarial')
+    parser.add_argument('--adv-ratio', type=float, default=0.5,
+                       help='Proporción de muestras adversariales por batch (0-1)')
+    parser.add_argument('--adv-start-epoch', type=int, default=5,
+                       help='Época desde la cual activar entrenamiento adversarial')
     
     args = parser.parse_args()
     
@@ -49,6 +63,14 @@ def main():
     print(f"  Tamaño de imagen: {args.img_size}x{args.img_size}")
     print(f"  Arquitectura: {args.architecture}")
     print(f"  Tasa de aprendizaje: {args.learning_rate}")
+    print(f"  Validation split interno: {args.validation_split}")
+    print(f"  Test externo (si existe): {args.test_dir}")
+    print(f"  Test split automático: {args.test_split}")
+    print(f"  Split output dir: {args.split_output_dir}")
+    print(f"  Seed: {args.seed}")
+    print(f"  FGSM epsilon: {args.fgsm_epsilon}")
+    print(f"  FGSM ratio adversarial: {args.adv_ratio}")
+    print(f"  FGSM inicio en época: {args.adv_start_epoch}")
     print(f"  Data augmentation: {not args.no_augmentation}")
     print("="*70 + "\n")
     
@@ -58,17 +80,38 @@ def main():
         print(f"ERROR: El directorio {args.data_dir} no existe")
         print("Por favor, organiza tus datos en el directorio especificado")
         return
-    
+
     # Crear preprocesador
     print("Inicializando preprocesador...")
     preprocessor = DataPreprocessor(
         img_size=(args.img_size, args.img_size),
         batch_size=args.batch_size
     )
+
+    train_data_dir = args.data_dir
+    test_path = Path(args.test_dir)
+    if test_path.exists():
+        print(f"Conjunto de test externo detectado en: {args.test_dir}")
+        print("Se usará para evaluación posterior con 'evaluate_model.py'")
+    else:
+        print(f"No se encontró test externo en {args.test_dir}")
+        print("Generando split automático 75/25 desde data-dir...")
+        try:
+            train_data_dir, generated_test_dir = preprocessor.create_train_test_split(
+                data_dir=args.data_dir,
+                output_dir=args.split_output_dir,
+                test_split=args.test_split,
+                random_state=args.seed
+            )
+            print(f"Split generado: train={train_data_dir}, test={generated_test_dir}")
+            print("Usa evaluate_model.py con --test-dir apuntando al test generado")
+        except Exception as e:
+            print(f"ERROR: No se pudo generar split automático: {e}")
+            return
     
     # Obtener número de clases
     try:
-        class_names = preprocessor.get_class_names(args.data_dir)
+        class_names = preprocessor.get_class_names(train_data_dir)
         num_classes = len(class_names)
         print(f"Clases detectadas ({num_classes}): {class_names}\n")
     except Exception as e:
@@ -79,7 +122,7 @@ def main():
     print("Creando generadores de datos...")
     try:
         train_gen, val_gen = preprocessor.create_data_generators(
-            args.data_dir,
+            train_data_dir,
             validation_split=args.validation_split,
             use_augmentation=not args.no_augmentation
         )
@@ -111,7 +154,10 @@ def main():
         train_gen,
         val_gen,
         epochs=args.epochs,
-        model_name=f"waste_classifier_{args.architecture}"
+        model_name=f"waste_classifier_{args.architecture}",
+        fgsm_epsilon=args.fgsm_epsilon,
+        adv_ratio=args.adv_ratio,
+        adv_start_epoch=args.adv_start_epoch
     )
     
     # Graficar historial
