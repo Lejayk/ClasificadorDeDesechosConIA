@@ -17,6 +17,70 @@ from model import WasteClassificationModel
 from preprocessing import DataPreprocessor
 
 
+class EpochTrackerCallback(keras.callbacks.Callback):
+    """Callback para exponer la época actual al modelo adversarial."""
+
+    def __init__(self, adv_model):
+        super().__init__()
+        self.adv_model = adv_model
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.adv_model.current_epoch = int(epoch)
+
+
+class AdversarialTrainingModel(keras.Model):
+    """Wrapper Keras para entrenamiento adversarial FGSM básico."""
+
+    def __init__(self, base_model: keras.Model, epsilon: float, adv_ratio: float, adv_start_epoch: int = 0):
+        super().__init__()
+        self.base_model = base_model
+        self.epsilon = float(epsilon)
+        self.adv_ratio = float(np.clip(adv_ratio, 0.0, 1.0))
+        self.adv_start_epoch = int(max(0, adv_start_epoch))
+        self.current_epoch = 0
+
+    def call(self, inputs, training=False):
+        return self.base_model(inputs, training=training)
+
+    def train_step(self, data):
+        x, y = data
+
+        use_adversarial = self.epsilon > 0 and self.adv_ratio > 0 and self.current_epoch >= self.adv_start_epoch
+
+        if use_adversarial:
+            with tf.GradientTape() as adv_tape:
+                adv_tape.watch(x)
+                clean_pred = self(x, training=True)
+                clean_loss = self.compiled_loss(y, clean_pred, regularization_losses=self.losses)
+
+            input_grads = adv_tape.gradient(clean_loss, x)
+            x_adv = x + self.epsilon * tf.sign(input_grads)
+            x_adv = tf.clip_by_value(x_adv, 0.0, 1.0)
+
+            batch_size = tf.shape(x)[0]
+            mask = tf.cast(
+                tf.random.uniform((batch_size, 1, 1, 1), minval=0.0, maxval=1.0) < self.adv_ratio,
+                dtype=x.dtype
+            )
+            x_train = (mask * x_adv) + ((1.0 - mask) * x)
+        else:
+            x_train = x
+
+        with tf.GradientTape() as tape:
+            y_pred = self(x_train, training=True)
+            loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
+
+        trainable_vars = self.trainable_variables
+        gradients = tape.gradient(loss, trainable_vars)
+        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+
+        self.compiled_metrics.update_state(y, y_pred)
+        results = {m.name: m.result() for m in self.metrics}
+        results['loss'] = loss
+
+        return results
+
+
 class ModelTrainer:
     """
     Clase para entrenar el modelo de clasificación de residuos.
@@ -51,8 +115,8 @@ class ModelTrainer:
             # Guardar mejor modelo
             ModelCheckpoint(
                 filepath=str(self.output_dir / f"{model_name}_best.h5"),
-                monitor='val_accuracy',
-                mode='max',
+                monitor='val_loss',
+                mode='min',
                 save_best_only=True,
                 verbose=1
             ),
@@ -86,8 +150,11 @@ class ModelTrainer:
     def train(self,
               train_generator,
               validation_generator,
-              epochs: int = 50,
-              model_name: str = "waste_classifier") -> Dict[str, Any]:
+              epochs: int = 70,
+              model_name: str = "waste_classifier",
+              fgsm_epsilon: float = 0.0,
+              adv_ratio: float = 0.5,
+              adv_start_epoch: int = 5) -> Dict[str, Any]:
         """
         Entrena el modelo.
         
@@ -110,19 +177,56 @@ class ModelTrainer:
         print(f"Muestras de entrenamiento: {train_generator.samples}")
         print(f"Muestras de validación: {validation_generator.samples}")
         print(f"Clases: {list(train_generator.class_indices.keys())}")
+        print(f"FGSM epsilon: {fgsm_epsilon}")
+        print(f"FGSM ratio adversarial: {adv_ratio}")
+        print(f"FGSM inicio en época: {adv_start_epoch}")
         print("="*60 + "\n")
         
         # Crear callbacks
         callbacks = self.create_callbacks(model_name)
+
+        training_model = self.model.model
+        adv_model = None
+
+        if fgsm_epsilon > 0 and adv_ratio > 0:
+            optimizer_config = self.model.model.optimizer.get_config()
+            optimizer_class = self.model.model.optimizer.__class__
+            optimizer = optimizer_class.from_config(optimizer_config)
+
+            adv_model = AdversarialTrainingModel(
+                base_model=self.model.model,
+                epsilon=fgsm_epsilon,
+                adv_ratio=adv_ratio,
+                adv_start_epoch=adv_start_epoch
+            )
+
+            adv_model.compile(
+                optimizer=optimizer,
+                loss='categorical_crossentropy',
+                metrics=[
+                    keras.metrics.CategoricalAccuracy(name='accuracy'),
+                    keras.metrics.Precision(name='precision'),
+                    keras.metrics.Recall(name='recall')
+                ]
+            )
+
+            callbacks = [EpochTrackerCallback(adv_model)] + callbacks
+            training_model = adv_model
+            print("Entrenamiento adversarial FGSM activado")
+        else:
+            print("Entrenamiento estándar (sin FGSM)")
         
         # Entrenar modelo
-        self.history = self.model.model.fit(
+        self.history = training_model.fit(
             train_generator,
             validation_data=validation_generator,
             epochs=epochs,
             callbacks=callbacks,
             verbose=1
         )
+
+        if adv_model is not None:
+            self.model.model.set_weights(adv_model.base_model.get_weights())
         
         # Guardar modelo final
         final_model_path = self.output_dir / f"{model_name}_final.h5"

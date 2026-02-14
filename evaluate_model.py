@@ -25,7 +25,7 @@ def main():
                        help='Directorio para guardar resultados de evaluación')
     parser.add_argument('--batch-size', type=int, default=32,
                        help='Tamaño de lote')
-    parser.add_argument('--img-size', type=int, default=224,
+    parser.add_argument('--img-size', type=int, default=64,
                        help='Tamaño de imagen')
     
     args = parser.parse_args()
@@ -62,16 +62,7 @@ def main():
         batch_size=args.batch_size
     )
     
-    from tensorflow.keras.preprocessing.image import ImageDataGenerator
-    
-    test_datagen = ImageDataGenerator(rescale=1./255)
-    test_generator = test_datagen.flow_from_directory(
-        args.test_dir,
-        target_size=(args.img_size, args.img_size),
-        batch_size=args.batch_size,
-        class_mode='categorical',
-        shuffle=False
-    )
+    test_generator = preprocessor.create_test_generator(args.test_dir)
     
     # Evaluar modelo
     print("\nEvaluando modelo en datos de test...")
@@ -91,6 +82,11 @@ def main():
     print("\nAnalizando accuracy por clase...")
     per_class_path = output_path / "per_class_accuracy.png"
     evaluator.plot_per_class_accuracy(test_generator, save_path=str(per_class_path))
+
+    # Analizar confusiones más frecuentes
+    print("\nAnalizando confusiones más frecuentes...")
+    confusion_report_path = output_path / "top_confusions.txt"
+    evaluator.analyze_top_confusions(test_generator, top_n=8, save_path=str(confusion_report_path))
     
     print("\n" + "="*70)
     print("EVALUACIÓN COMPLETADA")
@@ -99,6 +95,7 @@ def main():
     print(f"  - Reporte de clasificación: {report_path.name}")
     print(f"  - Matriz de confusión: {cm_path.name}")
     print(f"  - Accuracy por clase: {per_class_path.name}")
+    print(f"  - Top confusiones: {confusion_report_path.name}")
     print("="*70 + "\n")
 
 

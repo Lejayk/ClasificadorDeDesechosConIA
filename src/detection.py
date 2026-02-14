@@ -21,7 +21,9 @@ class WasteDetector:
     def __init__(self, 
                  model_path: str,
                  class_mapping_path: str,
-                 img_size: Tuple[int, int] = (224, 224)):
+                 img_size: Tuple[int, int] = (64, 64),
+                 enable_smoothing: bool = True,
+                 smoothing_method: str = 'gaussian'):
         """
         Inicializa el detector.
         
@@ -33,6 +35,8 @@ class WasteDetector:
         # Cargar modelo
         self.model = keras.models.load_model(model_path)
         self.img_size = img_size
+        self.enable_smoothing = enable_smoothing
+        self.smoothing_method = smoothing_method
         
         # Cargar mapeo de clases
         with open(class_mapping_path, 'r') as f:
@@ -43,6 +47,47 @@ class WasteDetector:
         
         print(f"Detector inicializado con {len(self.index_to_class)} clases")
         print(f"Clases disponibles: {list(self.index_to_class.values())}")
+
+    def _validate_input_image(self, img: np.ndarray, image_path: str) -> None:
+        """
+        Valida la imagen antes de inferencia.
+
+        Args:
+            img: Imagen cargada por OpenCV
+            image_path: Ruta de la imagen
+        """
+        if img is None:
+            raise ValueError(f"No se pudo cargar la imagen: {image_path}")
+
+        if img.size == 0:
+            raise ValueError(f"La imagen está vacía: {image_path}")
+
+        if len(img.shape) not in [2, 3]:
+            raise ValueError(f"Formato de imagen no soportado (shape={img.shape}): {image_path}")
+
+    def _sanitize_channels(self, img: np.ndarray) -> np.ndarray:
+        """
+        Asegura que la imagen tenga 3 canales RGB.
+        """
+        if len(img.shape) == 2:
+            return cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+
+        if img.shape[2] == 4:
+            return cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
+
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    def _apply_smoothing(self, img: np.ndarray) -> np.ndarray:
+        """
+        Aplica suavizado ligero para mejorar robustez frente a perturbaciones.
+        """
+        if not self.enable_smoothing:
+            return img
+
+        if self.smoothing_method == 'median':
+            return cv2.medianBlur(img, 3)
+
+        return cv2.GaussianBlur(img, (3, 3), 0)
     
     def preprocess_image(self, image_path: str) -> np.ndarray:
         """
@@ -56,17 +101,22 @@ class WasteDetector:
         """
         # Leer imagen
         img = cv2.imread(image_path)
-        if img is None:
-            raise ValueError(f"No se pudo cargar la imagen: {image_path}")
-        
-        # Convertir BGR a RGB
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        self._validate_input_image(img, image_path)
+
+        # Sanitizar canales y convertir a RGB
+        img = self._sanitize_channels(img)
+
+        # Suavizado ligero para robustez
+        img = self._apply_smoothing(img)
         
         # Redimensionar
         img = cv2.resize(img, self.img_size)
         
         # Normalizar
         img = img.astype(np.float32) / 255.0
+
+        if not np.isfinite(img).all():
+            raise ValueError(f"La imagen contiene valores inválidos tras preprocesamiento: {image_path}")
         
         # Agregar dimensión de batch
         img = np.expand_dims(img, axis=0)

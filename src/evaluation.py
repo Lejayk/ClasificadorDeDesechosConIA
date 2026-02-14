@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 from sklearn.metrics import classification_report, confusion_matrix
 import tensorflow as tf
 from tensorflow import keras
@@ -162,6 +162,73 @@ class ModelEvaluator:
             print(f"Matriz de confusión guardada en: {save_path}")
         else:
             plt.show()
+
+    def analyze_top_confusions(self,
+                               test_generator,
+                               top_n: int = 5,
+                               save_path: str = None) -> List[Dict[str, Any]]:
+        """
+        Analiza los pares de clases más confundidos (excluyendo diagonal).
+
+        Args:
+            test_generator: Generador de datos de test
+            top_n: Número de confusiones a reportar
+            save_path: Ruta opcional para guardar reporte en texto
+
+        Returns:
+            Lista de confusiones ordenadas por frecuencia descendente
+        """
+        predicted_classes, true_classes = self.predict_and_analyze(test_generator)
+        cm = confusion_matrix(true_classes, predicted_classes)
+        class_names = [self.index_to_class[i] for i in sorted(self.index_to_class.keys())]
+
+        confusions = []
+        for true_idx in range(cm.shape[0]):
+            for pred_idx in range(cm.shape[1]):
+                if true_idx == pred_idx:
+                    continue
+
+                count = int(cm[true_idx, pred_idx])
+                if count > 0:
+                    confusions.append({
+                        'true_class': class_names[true_idx],
+                        'predicted_class': class_names[pred_idx],
+                        'count': count
+                    })
+
+        confusions.sort(key=lambda item: item['count'], reverse=True)
+        top_confusions = confusions[:top_n]
+
+        print("\n" + "="*60)
+        print("TOP CONFUSIONES ENTRE CLASES")
+        print("="*60)
+
+        if not top_confusions:
+            print("  No se detectaron confusiones fuera de la diagonal.")
+        else:
+            for idx, item in enumerate(top_confusions, 1):
+                print(
+                    f"  {idx}. Verdadera: {item['true_class']} -> Predicha: {item['predicted_class']} "
+                    f"({item['count']} casos)"
+                )
+        print("="*60 + "\n")
+
+        if save_path:
+            with open(save_path, 'w') as f:
+                f.write("TOP CONFUSIONES ENTRE CLASES\n")
+                f.write("="*60 + "\n")
+                if not top_confusions:
+                    f.write("No se detectaron confusiones fuera de la diagonal.\n")
+                else:
+                    for idx, item in enumerate(top_confusions, 1):
+                        f.write(
+                            f"{idx}. Verdadera: {item['true_class']} -> "
+                            f"Predicha: {item['predicted_class']} ({item['count']} casos)\n"
+                        )
+
+            print(f"Reporte de confusiones guardado en: {save_path}")
+
+        return top_confusions
     
     def analyze_per_class_accuracy(self, test_generator) -> Dict[str, float]:
         """

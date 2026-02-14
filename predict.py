@@ -26,6 +26,13 @@ def main():
                        help='Umbral de confianza mínimo (0.0-1.0)')
     parser.add_argument('--top-k', type=int, default=3,
                        help='Número de predicciones principales a mostrar')
+    parser.add_argument('--img-size', type=int, default=64,
+                       help='Tamaño de imagen para inferencia')
+    parser.add_argument('--disable-smoothing', action='store_true',
+                       help='Desactivar suavizado defensivo en inferencia')
+    parser.add_argument('--smoothing-method', type=str, default='gaussian',
+                       choices=['gaussian', 'median'],
+                       help='Método de suavizado defensivo')
     
     args = parser.parse_args()
     
@@ -56,7 +63,10 @@ def main():
     try:
         detector = WasteDetector(
             model_path=args.model,
-            class_mapping_path=args.classes
+            class_mapping_path=args.classes,
+            img_size=(args.img_size, args.img_size),
+            enable_smoothing=not args.disable_smoothing,
+            smoothing_method=args.smoothing_method
         )
     except Exception as e:
         print(f"\nERROR: No se pudo cargar el modelo: {e}")

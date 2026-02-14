@@ -78,21 +78,17 @@ ClasificadorDeDesechosConIA/
 
 #### CNN Personalizada (custom_cnn)
 ```
-Input (224x224x3)
+Input (64x64x3)
     ↓
-Conv2D(32) → MaxPool → BatchNorm
+Conv2D(32, 2x2, same, stride=1) → ReLU → MaxPool(2x2) → Dropout(0.2)
     ↓
-Conv2D(64) → MaxPool → BatchNorm
+Conv2D(32, 2x2, same, stride=1) → ReLU → MaxPool(2x2) → Dropout(0.2)
     ↓
-Conv2D(128) → MaxPool → BatchNorm
-    ↓
-Conv2D(128) → MaxPool → BatchNorm
+Conv2D(32, 2x2, same, stride=1) → ReLU → MaxPool(2x2) → Dropout(0.2)
     ↓
 Flatten
     ↓
-Dense(512) → Dropout(0.5)
-    ↓
-Dense(256) → Dropout(0.3)
+Dense(512) → ReLU
     ↓
 Dense(num_classes) → Softmax
 ```
@@ -114,8 +110,8 @@ Dense(num_classes) → Softmax
 **Callbacks Implementados**:
 
 1. **ModelCheckpoint**: Guarda el mejor modelo
-   - Monitor: `val_accuracy`
-   - Modo: Maximizar
+    - Monitor: `val_loss`
+    - Modo: Minimizar
    
 2. **EarlyStopping**: Detiene entrenamiento si no hay mejora
    - Paciencia: 10 épocas
@@ -126,6 +122,11 @@ Dense(num_classes) → Softmax
    - Paciencia: 5 épocas
    
 4. **TensorBoard**: Logging para visualización
+
+**Robustez adversarial (FGSM)**:
+- Entrenamiento adversarial opcional con `epsilon`, `adv_ratio` y `adv_start_epoch`
+- Mezcla de muestras limpias y adversariales por batch
+- Clipping de entradas al rango `[0, 1]`
 
 **Proceso de Entrenamiento**:
 1. Validación de datos
@@ -151,6 +152,7 @@ Dense(num_classes) → Softmax
 1. Matriz de confusión (heatmap)
 2. Accuracy por clase (gráfico de barras)
 3. Reporte de clasificación detallado
+4. Top confusiones entre pares de clases
 
 ### 6. detection.py
 
@@ -171,9 +173,11 @@ Imagen de entrada
     ↓
 Carga de imagen (OpenCV)
     ↓
-Conversión BGR → RGB
+Validación de imagen y saneamiento de canales
     ↓
-Redimensionamiento (224x224)
+Suavizado defensivo (gaussian/median)
+    ↓
+Redimensionamiento (64x64)
     ↓
 Normalización (0-1)
     ↓
@@ -194,7 +198,7 @@ Formato de resultados
 - Uso de `batch_size` para procesamiento paralelo
 - Data augmentation on-the-fly para eficiencia de memoria
 - Callbacks para early stopping y ahorro de cómputo
-- BatchNormalization para convergencia más rápida
+- Entrenamiento adversarial FGSM configurable para robustez
 
 **Inferencia**:
 - Modelos optimizados para diferentes escenarios (MobileNet para móviles)
@@ -228,12 +232,12 @@ Formato de resultados
 - **Formatos soportados**: JPG, PNG, JPEG
 - **Resolución**: Flexible (se redimensiona automáticamente)
 - **Canales**: RGB (3 canales)
-- **Tamaño procesado**: 224x224 píxeles (configurable)
+- **Tamaño procesado**: 64x64 píxeles (configurable)
 
 ### Modelos Guardados
 
 **Archivos generados**:
-1. `{model_name}_best.h5`: Mejor modelo (val_accuracy)
+1. `{model_name}_best.h5`: Mejor modelo (val_loss)
 2. `{model_name}_final.h5`: Modelo final de entrenamiento
 3. `{model_name}_classes.json`: Mapeo índice → clase
 4. `{model_name}_history.json`: Historial de entrenamiento
@@ -241,12 +245,12 @@ Formato de resultados
 **Formato de clases.json**:
 ```json
 {
-  "0": "carton",
-  "1": "metal",
-  "2": "organico",
-  "3": "papel",
-  "4": "plastico",
-  "5": "vidrio"
+    "0": "cardboard",
+    "1": "glass",
+    "2": "metal",
+    "3": "paper",
+    "4": "plastic",
+    "5": "trash"
 }
 ```
 
@@ -312,7 +316,7 @@ class TestPreprocessor(unittest.TestCase):
     
     def test_image_loading(self):
         img = self.preprocessor.load_and_preprocess_image('test.jpg')
-        self.assertEqual(img.shape, (224, 224, 3))
+        self.assertEqual(img.shape, (64, 64, 3))
         self.assertTrue(img.max() <= 1.0)
         self.assertTrue(img.min() >= 0.0)
 ```
@@ -320,9 +324,8 @@ class TestPreprocessor(unittest.TestCase):
 ### Validación de Modelos
 
 Siempre validar en conjunto de test separado:
-- Train: 70%
-- Validation: 15%
-- Test: 15%
+- Train/Test: 75% / 25%
+- Validación interna adicional desde train para callbacks
 
 ## Mejoras Futuras
 

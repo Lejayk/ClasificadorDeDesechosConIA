@@ -18,12 +18,12 @@
 
 Este sistema utiliza técnicas de inteligencia artificial y visión artificial para detectar y clasificar diferentes tipos de residuos a través de imágenes. El sistema es capaz de reconocer las siguientes categorías de residuos:
 
-- **Plástico**: Botellas, envases, bolsas plásticas
-- **Papel**: Periódicos, documentos, cartulina
-- **Vidrio**: Botellas, frascos, cristales
-- **Orgánico**: Restos de comida, cáscaras, desechos biodegradables
+- **Glass**: Botellas y frascos de vidrio
+- **Paper**: Periódicos, documentos, cartulina
+- **Cardboard**: Cajas y empaques de cartón
+- **Plastic**: Botellas, envases, bolsas plásticas
 - **Metal**: Latas, alambres, envases metálicos
-- **Cartón**: Cajas, empaques de cartón
+- **Trash**: Residuos no reciclables
 
 ## Requisitos del Sistema
 
@@ -79,20 +79,20 @@ Organiza tus imágenes de entrenamiento en la siguiente estructura:
 ```
 data/
 └── raw/
-    ├── plastico/
+    ├── glass/
     │   ├── imagen1.jpg
     │   ├── imagen2.jpg
     │   └── ...
-    ├── papel/
+    ├── paper/
     │   ├── imagen1.jpg
     │   └── ...
-    ├── vidrio/
+    ├── cardboard/
     │   └── ...
-    ├── organico/
+    ├── plastic/
     │   └── ...
     ├── metal/
     │   └── ...
-    └── carton/
+    └── trash/
         └── ...
 ```
 
@@ -115,7 +115,7 @@ python -c "from src.data_collection import DataCollector; DataCollector().create
 ### Entrenamiento Básico
 
 ```bash
-python train_model.py --data-dir data/raw --epochs 50
+python train_model.py --data-dir data/raw --epochs 70 --img-size 64
 ```
 
 ### Opciones Avanzadas
@@ -124,12 +124,16 @@ python train_model.py --data-dir data/raw --epochs 50
 python train_model.py \
     --data-dir data/raw \
     --output-dir models \
-    --epochs 100 \
+    --epochs 70 \
     --batch-size 32 \
-    --img-size 224 \
+    --img-size 64 \
     --architecture custom_cnn \
     --learning-rate 0.001 \
-    --validation-split 0.2
+    --validation-split 0.2 \
+    --test-split 0.25 \
+    --fgsm-epsilon 0.0078 \
+    --adv-ratio 0.5 \
+    --adv-start-epoch 5
 ```
 
 ### Arquitecturas Disponibles
@@ -186,6 +190,7 @@ python evaluate_model.py \
 - **Precision y Recall**: Por clase
 - **Matriz de confusión**: Visualización de errores
 - **Accuracy por clase**: Rendimiento individual de cada categoría
+- **Top confusiones**: Pares de clases más confundidos
 
 ## Uso del Sistema de Detección
 
@@ -208,6 +213,11 @@ python predict.py \
 python predict.py \
     --image test_image.jpg \
     --threshold 0.8
+
+# Con suavizado defensivo configurable
+python predict.py \
+    --image test_image.jpg \
+    --smoothing-method median
 ```
 
 ### Usar Modelo Personalizado
@@ -251,7 +261,7 @@ from src.preprocessing import DataPreprocessor
 from src.train import ModelTrainer
 
 # Crear preprocesador
-preprocessor = DataPreprocessor(img_size=(224, 224), batch_size=32)
+preprocessor = DataPreprocessor(img_size=(64, 64), batch_size=32)
 train_gen, val_gen = preprocessor.create_data_generators('data/raw')
 
 # Crear y entrenar modelo
@@ -319,7 +329,7 @@ print("GPU disponible:", tf.config.list_physical_devices('GPU'))
 
 ## Mejores Prácticas
 
-1. **División de datos**: 70% entrenamiento, 15% validación, 15% test
+1. **División de datos**: 75% train, 25% test y validación interna adicional desde train
 2. **Augmentación**: Siempre activada para entrenamiento
 3. **Early stopping**: El sistema para automáticamente si no hay mejora
 4. **Guardar modelos**: El mejor modelo se guarda automáticamente
