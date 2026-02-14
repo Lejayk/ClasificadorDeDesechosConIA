@@ -1,198 +1,123 @@
-# 🗑️ Clasificador de Residuos con IA
+# Sistema de Detección y Clasificación de Residuos con IA
 
-Sistema inteligente de detección y clasificación de residuos utilizando técnicas de inteligencia artificial y visión artificial. El sistema es capaz de reconocer y clasificar diferentes tipos de residuos comunes a través de imágenes.
+Proyecto de visión artificial para la Universidad Rafael Urdaneta orientado a la clasificación automática de residuos (por ejemplo: plástico, papel, vidrio y orgánicos) a partir de imágenes.
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13%2B-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+## Tecnologías
 
-## 📋 Descripción
+- Python
+- TensorFlow / Keras
+- OpenCV
+- scikit-learn
+- NumPy
+- Pandas
+- Matplotlib
+- Seaborn
+- Streamlit
 
-Este proyecto implementa un sistema completo de clasificación de residuos que puede identificar automáticamente las siguientes categorías:
+## Estructura esperada de datos
 
-- 🔳 **Glass**: Botellas y frascos de vidrio
-- 📄 **Paper**: Hojas, periódicos, impresos
-- 📦 **Cardboard**: Cajas y empaques de cartón
-- 🔷 **Plastic**: Botellas, envases, bolsas
-- ⚙️ **Metal**: Latas y envases metálicos
-- 🗑️ **Trash**: Residuos no reciclables
+Organiza el dataset por carpetas de clase:
 
-## ✨ Características
+```text
+data/
+  raw/
+    plastico/
+    papel/
+    vidrio/
+    organico/
+```
 
-- ✅ **Múltiples Arquitecturas**: CNN personalizada, MobileNetV2, ResNet50, EfficientNetB0
-- ✅ **Transfer Learning**: Aprovecha modelos pre-entrenados para mayor precisión
-- ✅ **Data Augmentation**: Mejora la generalización con técnicas de augmentación
-- ✅ **Evaluación Completa**: Métricas detalladas y visualizaciones
-- ✅ **Fácil de Usar**: Scripts CLI intuitivos para entrenamiento y predicción
-- ✅ **Documentación Exhaustiva**: Guías de usuario y documentación técnica
-- ✅ **Notebooks Interactivos**: Ejemplos en Jupyter para exploración
+Para evaluación, usa una carpeta separada de prueba con la misma estructura:
 
-## 🚀 Inicio Rápido
+```text
+data/
+  test/
+    plastico/
+    papel/
+    vidrio/
+    organico/
+```
 
-### Instalación
+## Instalación
+
+1. Crear y activar entorno virtual (recomendado).
+2. Instalar dependencias:
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/Lejayk/ClasificadorDeDesechosConIA.git
-cd ClasificadorDeDesechosConIA
-
-# Instalar dependencias
 pip install -r requirements.txt
 ```
 
-### Preparar Datos
+## Entrenamiento del modelo
 
-Organiza tus imágenes en la siguiente estructura:
+El script `train_model.py` implementa Transfer Learning con MobileNetV2 (ImageNet), `ImageDataGenerator` con augmentación (rotación, zoom y volteo horizontal), preprocesamiento a `224x224` con normalización y split entrenamiento/validación `80/20`.
 
-```
-data/raw/
-├── glass/
-├── paper/
-├── cardboard/
-├── plastic/
-├── metal/
-└── trash/
-```
-
-### Entrenar el Modelo
+Ejemplo:
 
 ```bash
-python train_model.py --data-dir data/raw --epochs 70 --img-size 64
+python train_model.py --data-dir data/raw --epochs 20 --batch-size 32
 ```
 
-### Clasificar Imágenes
+Artefactos generados:
+
+- `models/waste_classifier.h5` (modelo entrenado)
+- `models/training_history.csv` (historial de métricas)
+- `models/class_indices.json` (índice ↔ clase)
+
+## Evaluación del modelo
+
+El script `evaluate_model.py` carga el modelo entrenado y el conjunto de prueba para calcular:
+
+- Matriz de confusión
+- Precision
+- Recall
+- F-score
+- Reporte de clasificación por clase
+
+Además, grafica la evolución de `Accuracy` y `Loss` desde el historial de entrenamiento.
+
+Ejemplo:
 
 ```bash
-python predict.py --image ruta/a/imagen.jpg
+python evaluate_model.py --test-dir data/test --model models/waste_classifier.h5
 ```
 
-## 📖 Documentación
+Salidas en `models/evaluation/`:
 
-- [Guía de Usuario](docs/GUIA_USUARIO.md) - Instrucciones detalladas de uso
-- [Documentación Técnica](docs/DOCUMENTACION_TECNICA.md) - Arquitectura y detalles técnicos
-- [Demo Notebook](notebooks/demo.ipynb) - Tutorial interactivo
+- `confusion_matrix.png`
+- `classification_report.txt`
+- `metrics_summary.csv`
+- `training_history.png`
 
-## 🏗️ Estructura del Proyecto
+## Interfaz web (Streamlit)
 
-```
-ClasificadorDeDesechosConIA/
-├── src/                    # Código fuente
-│   ├── data_collection.py  # Recopilación de datos
-│   ├── preprocessing.py    # Preprocesamiento
-│   ├── model.py           # Arquitecturas de modelos
-│   ├── train.py           # Entrenamiento
-│   ├── evaluation.py      # Evaluación
-│   └── detection.py       # Inferencia
-├── data/                  # Datos del proyecto
-├── models/                # Modelos entrenados
-├── notebooks/             # Jupyter notebooks
-├── docs/                  # Documentación
-├── train_model.py         # Script de entrenamiento
-├── predict.py            # Script de predicción
-├── evaluate_model.py     # Script de evaluación
-└── requirements.txt      # Dependencias
+`app.py` permite cargar una imagen y obtener la clase predicha con porcentaje de confianza.
 
-```
-
-## 🔧 Requisitos
-
-- Python 3.8 o superior
-- TensorFlow 2.13+
-- OpenCV
-- NumPy, Pandas, Matplotlib
-- 8 GB RAM mínimo (16 GB recomendado)
-- GPU opcional (recomendada para entrenamiento)
-
-## 📊 Resultados Esperados
-
-Con un dataset bien balanceado de ~500 imágenes por clase, puedes esperar:
-
-- **Accuracy**: 85-95%
-- **Precision**: 80-90% por clase
-- **Recall**: 80-90% por clase
-
-## 🎯 Casos de Uso
-
-1. **Gestión de Residuos**: Automatización en plantas de reciclaje
-2. **Educación Ambiental**: Herramienta para enseñar reciclaje
-3. **Smart Bins**: Contenedores inteligentes que clasifican automáticamente
-4. **Aplicaciones Móviles**: Apps para ciudadanos sobre clasificación de residuos
-5. **Auditorías**: Verificación de correcta separación de residuos
-
-## 🛠️ Uso Avanzado
-
-### Entrenar con Transfer Learning
+Ejecutar:
 
 ```bash
-python train_model.py \
-    --data-dir data/raw \
-    --architecture mobilenet \
-    --epochs 30 \
-    --learning-rate 0.0001
+streamlit run app.py
 ```
 
-### Evaluar el Modelo
+## Parámetros útiles
 
-```bash
-python evaluate_model.py \
-    --test-dir data/test \
-    --model models/waste_classifier_custom_cnn_best.h5 \
-    --img-size 64
-```
+### `train_model.py`
 
-### Predicción con Visualización
+- `--data-dir`: dataset de entrenamiento
+- `--epochs`: número de épocas
+- `--batch-size`: tamaño de lote
+- `--model-output`: ruta del modelo `.h5`
+- `--history-output`: ruta del historial `.csv`
+- `--classes-output`: ruta del mapeo de clases `.json`
 
-```bash
-python predict.py \
-    --image test.jpg \
-    --output resultado.png \
-    --top-k 3 \
-    --img-size 64
+### `evaluate_model.py`
 
-# Predicción robusta (suavizado defensivo)
-python predict.py \
-    --image test.jpg \
-    --smoothing-method gaussian
-```
+- `--test-dir`: dataset de prueba
+- `--model`: modelo entrenado
+- `--classes`: archivo de clases
+- `--history`: historial de entrenamiento
+- `--output-dir`: carpeta de resultados
 
-## 📝 Scripts Disponibles
+## Notas
 
-| Script | Descripción |
-|--------|-------------|
-| `train_model.py` | Entrena el modelo de clasificación |
-| `predict.py` | Clasifica imágenes nuevas |
-| `evaluate_model.py` | Evalúa rendimiento del modelo |
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Por favor:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto es de código abierto y está disponible bajo la licencia MIT.
-
-## 👥 Autores
-
-- **Lejayk** - *Desarrollo inicial*
-
-## 🙏 Agradecimientos
-
-- TensorFlow y Keras por las herramientas de deep learning
-- La comunidad de código abierto por las librerías utilizadas
-- Datasets públicos de residuos para entrenamiento
-
-## 📧 Contacto
-
-Para preguntas, sugerencias o reportar problemas:
-- Crear un issue en GitHub
-- Revisar la documentación en `docs/`
-
----
-
-**⭐ Si este proyecto te resulta útil, considera darle una estrella en GitHub!**
+- Si cambias las clases del dataset, el sistema las detecta automáticamente desde las carpetas.
+- La app usa `models/waste_classifier.h5` y `models/class_indices.json` por defecto.
