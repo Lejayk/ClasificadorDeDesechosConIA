@@ -8,7 +8,7 @@ import json
 import numpy as np
 import cv2
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 import tensorflow as tf
 from tensorflow import keras
 
@@ -73,7 +73,7 @@ class WasteDetector:
         
         return img
     
-    def predict(self, image_path: str, top_k: int = 3) -> List[Dict[str, any]]:
+    def predict(self, image_path: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
         Predice la clase de residuo de una imagen.
         
@@ -105,7 +105,7 @@ class WasteDetector:
     
     def predict_and_display(self, 
                            image_path: str,
-                           save_path: Optional[str] = None) -> Dict[str, any]:
+                           save_path: Optional[str] = None) -> Dict[str, Any]:
         """
         Predice y muestra resultado visualmente.
         
@@ -158,7 +158,7 @@ class WasteDetector:
         
         return top_prediction
     
-    def batch_predict(self, image_paths: List[str]) -> List[Dict[str, any]]:
+    def batch_predict(self, image_paths: List[str]) -> List[Dict[str, Any]]:
         """
         Realiza predicciones en lote.
         
@@ -195,7 +195,7 @@ class WasteDetector:
     
     def classify_with_threshold(self,
                                image_path: str,
-                               confidence_threshold: float = 0.7) -> Optional[Dict[str, any]]:
+                               confidence_threshold: float = 0.7) -> Optional[Dict[str, Any]]:
         """
         Clasifica una imagen solo si la confianza supera un umbral.
         
@@ -214,7 +214,7 @@ class WasteDetector:
         else:
             return None
     
-    def get_model_info(self) -> Dict[str, any]:
+    def get_model_info(self) -> Dict[str, Any]:
         """
         Obtiene información del modelo.
         
