@@ -21,7 +21,7 @@ class WasteDetector:
     def __init__(self, 
                  model_path: str,
                  class_mapping_path: str,
-                 img_size: Tuple[int, int] = (64, 64),
+                 img_size: Tuple[int, int] = (224, 224),
                  enable_smoothing: bool = True,
                  smoothing_method: str = 'gaussian'):
         """
@@ -47,6 +47,31 @@ class WasteDetector:
         
         print(f"Detector inicializado con {len(self.index_to_class)} clases")
         print(f"Clases disponibles: {list(self.index_to_class.values())}")
+
+    def preprocess_image_array(self, image_rgb: np.ndarray) -> np.ndarray:
+        """
+        Preprocesa una imagen en memoria para inferencia.
+
+        Args:
+            image_rgb: Imagen RGB en formato numpy
+
+        Returns:
+            Tensor de entrada listo para el modelo
+        """
+        if image_rgb is None or image_rgb.size == 0:
+            raise ValueError("La imagen en memoria es inválida o está vacía")
+
+        if len(image_rgb.shape) != 3 or image_rgb.shape[2] != 3:
+            raise ValueError(f"Se esperaba imagen RGB con 3 canales. shape recibido: {image_rgb.shape}")
+
+        img = self._apply_smoothing(image_rgb)
+        img = cv2.resize(img, self.img_size)
+        img = img.astype(np.float32) / 255.0
+
+        if not np.isfinite(img).all():
+            raise ValueError("La imagen contiene valores inválidos tras preprocesamiento")
+
+        return np.expand_dims(img, axis=0)
 
     def _validate_input_image(self, img: np.ndarray, image_path: str) -> None:
         """
@@ -151,6 +176,31 @@ class WasteDetector:
                 'percentage': float(predictions[idx] * 100)
             })
         
+        return results
+
+    def predict_array(self, image_rgb: np.ndarray, top_k: int = 3) -> List[Dict[str, Any]]:
+        """
+        Predice la clase a partir de una imagen RGB en memoria.
+
+        Args:
+            image_rgb: Imagen RGB como numpy array
+            top_k: Número de predicciones principales
+
+        Returns:
+            Lista de predicciones ordenadas por confianza
+        """
+        img = self.preprocess_image_array(image_rgb)
+        predictions = self.model.predict(img, verbose=0)[0]
+        top_indices = np.argsort(predictions)[-top_k:][::-1]
+
+        results = []
+        for idx in top_indices:
+            results.append({
+                'class': self.index_to_class[idx],
+                'confidence': float(predictions[idx]),
+                'percentage': float(predictions[idx] * 100)
+            })
+
         return results
     
     def predict_and_display(self, 

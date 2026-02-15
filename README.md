@@ -63,6 +63,22 @@ Artefactos generados:
 - `models/training_history.csv` (historial de métricas)
 - `models/class_indices.json` (índice ↔ clase)
 
+## Pipeline completo (recomendado)
+
+Para cumplir todo el flujo solicitado (split reproducible train/test + entrenamiento + evaluación) en un solo comando:
+
+```bash
+python run_pipeline.py --raw-dir data/raw --epochs 20 --batch-size 32 --overwrite-split
+```
+
+Este pipeline realiza:
+
+- Validación del dataset por carpetas de clase.
+- Split train/test reproducible en `data/processed/split/`.
+- Entrenamiento con `train_model.py` sobre `data/processed/split/train`.
+- Evaluación automática con `evaluate_model.py` sobre `data/processed/split/test`.
+- Reporte de split en `models/split_report.json`.
+
 ## Evaluación del modelo
 
 El script `evaluate_model.py` carga el modelo entrenado y el conjunto de prueba para calcular:
@@ -91,6 +107,13 @@ Salidas en `models/evaluation/`:
 ## Interfaz web (Streamlit)
 
 `app.py` permite cargar una imagen y obtener la clase predicha con porcentaje de confianza.
+
+La inferencia está centralizada en `src/detection.py` (`WasteDetector`), por lo que puedes reutilizar la misma lógica en:
+
+- Streamlit (`app.py`)
+- CLI (`predict.py`)
+- API REST (FastAPI/Flask)
+- Aplicación de escritorio (Tkinter/PyQt)
 
 Ejecutar:
 

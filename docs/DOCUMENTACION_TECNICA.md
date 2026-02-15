@@ -25,6 +25,7 @@ ClasificadorDeDesechosConIA/
 ├── train_model.py           # Script principal de entrenamiento
 ├── predict.py               # Script principal de predicción
 ├── evaluate_model.py        # Script principal de evaluación
+├── run_pipeline.py          # Pipeline completo (split + train + evaluate)
 └── requirements.txt         # Dependencias del proyecto
 ```
 
@@ -163,9 +164,10 @@ Dense(num_classes) → Softmax
 **Métodos de Predicción**:
 
 1. `predict()`: Predicción básica con top-k resultados
-2. `predict_and_display()`: Predicción con visualización
-3. `batch_predict()`: Predicción en lote
-4. `classify_with_threshold()`: Clasificación con umbral de confianza
+2. `predict_array()`: Predicción desde imagen en memoria (ideal para UI/API)
+3. `predict_and_display()`: Predicción con visualización
+4. `batch_predict()`: Predicción en lote
+5. `classify_with_threshold()`: Clasificación con umbral de confianza
 
 **Pipeline de Inferencia**:
 ```
@@ -177,7 +179,7 @@ Validación de imagen y saneamiento de canales
     ↓
 Suavizado defensivo (gaussian/median)
     ↓
-Redimensionamiento (64x64)
+Redimensionamiento (224x224)
     ↓
 Normalización (0-1)
     ↓
@@ -233,6 +235,7 @@ Formato de resultados
 - **Resolución**: Flexible (se redimensiona automáticamente)
 - **Canales**: RGB (3 canales)
 - **Tamaño procesado**: 64x64 píxeles (configurable)
+- **Tamaño procesado**: 224x224 píxeles (configurable)
 
 ### Modelos Guardados
 

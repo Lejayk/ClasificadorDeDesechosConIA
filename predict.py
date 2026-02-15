@@ -2,23 +2,19 @@
 Script principal para realizar predicciones con el modelo entrenado.
 """
 
-import sys
 import argparse
 from pathlib import Path
 
-# Agregar src al path
-sys.path.append(str(Path(__file__).parent / 'src'))
-
-from detection import WasteDetector
+from src.detection import WasteDetector
 
 
 def main():
     parser = argparse.ArgumentParser(description='Clasificar residuos en imágenes')
     parser.add_argument('--image', type=str, required=True,
                        help='Ruta a la imagen a clasificar')
-    parser.add_argument('--model', type=str, default='models/waste_classifier_custom_cnn_best.h5',
+    parser.add_argument('--model', type=str, default='models/waste_classifier.h5',
                        help='Ruta al modelo entrenado')
-    parser.add_argument('--classes', type=str, default='models/waste_classifier_custom_cnn_classes.json',
+    parser.add_argument('--classes', type=str, default='models/class_indices.json',
                        help='Ruta al archivo de clases')
     parser.add_argument('--output', type=str, default=None,
                        help='Ruta para guardar imagen con predicción')
@@ -26,7 +22,7 @@ def main():
                        help='Umbral de confianza mínimo (0.0-1.0)')
     parser.add_argument('--top-k', type=int, default=3,
                        help='Número de predicciones principales a mostrar')
-    parser.add_argument('--img-size', type=int, default=64,
+    parser.add_argument('--img-size', type=int, default=224,
                        help='Tamaño de imagen para inferencia')
     parser.add_argument('--disable-smoothing', action='store_true',
                        help='Desactivar suavizado defensivo en inferencia')
@@ -35,6 +31,7 @@ def main():
                        help='Método de suavizado defensivo')
     
     args = parser.parse_args()
+
     
     print("\n" + "="*70)
     print("CLASIFICADOR DE RESIDUOS CON IA - PREDICCIÓN")

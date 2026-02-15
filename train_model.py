@@ -32,11 +32,7 @@ def build_model(num_classes: int) -> tf.keras.Model:
     model.compile(
         optimizer="adam",
         loss="categorical_crossentropy",
-        metrics=[
-            "accuracy",
-            tf.keras.metrics.Precision(name="precision"),
-            tf.keras.metrics.Recall(name="recall")
-        ]
+        metrics=["accuracy"]
     )
     return model
 

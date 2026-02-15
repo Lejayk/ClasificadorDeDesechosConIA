@@ -1,0 +1,15 @@
+{
+  "raw_dir": "data\\raw\\dataset-resized",
+  "train_dir": "data\\processed\\split\\train",
+  "test_dir": "data\\processed\\split\\test",
+  "class_distribution_raw": {
+    "cardboard": 403,
+    "glass": 501,
+    "metal": 410,
+    "paper": 594,
+    "plastic": 482,
+    "trash": 137
+  },
+  "test_size": 0.25,
+  "random_seed": 42
+}

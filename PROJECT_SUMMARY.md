@@ -20,6 +20,7 @@ Successfully implemented a complete waste classification system using artificial
 - ✅ **train_model.py** - CLI for training models
 - ✅ **predict.py** - CLI for classifying images
 - ✅ **evaluate_model.py** - CLI for model evaluation
+- ✅ **run_pipeline.py** - One-command pipeline (split + train + evaluate)
 - ✅ **setup.py** - Environment setup and verification
 
 #### 3. Documentation
@@ -99,8 +100,8 @@ pip install -r requirements.txt
 # 2. Organize your data
 # Place images in data/raw/[category]/
 
-# 3. Train model
-python train_model.py --data-dir data/raw --epochs 50
+# 3. Run full pipeline (recommended)
+python run_pipeline.py --raw-dir data/raw --epochs 20 --batch-size 32 --overwrite-split
 
 # 4. Classify images
 python predict.py --image path/to/image.jpg
@@ -108,11 +109,11 @@ python predict.py --image path/to/image.jpg
 
 ### Advanced Usage
 ```bash
-# Train with transfer learning
-python train_model.py --architecture mobilenet --epochs 30
+# Train only (without pipeline)
+python train_model.py --data-dir data/raw --epochs 20 --batch-size 32
 
-# Evaluate model
-python evaluate_model.py --test-dir data/test
+# Evaluate model (if you already have test split)
+python evaluate_model.py --test-dir data/processed/split/test --model models/waste_classifier.h5
 
 # Predict with visualization
 python predict.py --image test.jpg --output result.png
