@@ -106,6 +106,12 @@ def main() -> None:
     parser.add_argument("--overwrite-split", action="store_true", help="Regenera split eliminando el anterior")
     parser.add_argument("--epochs", type=int, default=20, help="Épocas de entrenamiento")
     parser.add_argument("--batch-size", type=int, default=32, help="Tamaño de lote")
+    parser.add_argument("--base-learning-rate", type=float, default=1e-3, help="Learning rate fase 1")
+    parser.add_argument("--fine-tune", action=argparse.BooleanOptionalAction, default=True, help="Activa/desactiva fine-tuning")
+    parser.add_argument("--fine-tune-epochs", type=int, default=10, help="Épocas fase 2")
+    parser.add_argument("--fine-tune-learning-rate", type=float, default=1e-5, help="Learning rate fase 2")
+    parser.add_argument("--unfreeze-layers", type=int, default=30, help="Capas finales a descongelar")
+    parser.add_argument("--patience", type=int, default=6, help="Paciencia de EarlyStopping")
     parser.add_argument("--model-output", type=str, default="models/waste_classifier.h5", help="Ruta de modelo")
     parser.add_argument("--history-output", type=str, default="models/training_history.csv", help="Ruta historial")
     parser.add_argument("--classes-output", type=str, default="models/class_indices.json", help="Ruta de clases")
@@ -146,10 +152,18 @@ def main() -> None:
         "--data-dir", str(train_dir),
         "--epochs", str(args.epochs),
         "--batch-size", str(args.batch_size),
+        "--base-learning-rate", str(args.base_learning_rate),
+        "--fine-tune-epochs", str(args.fine_tune_epochs),
+        "--fine-tune-learning-rate", str(args.fine_tune_learning_rate),
+        "--unfreeze-layers", str(args.unfreeze_layers),
+        "--patience", str(args.patience),
         "--model-output", args.model_output,
         "--history-output", args.history_output,
         "--classes-output", args.classes_output,
     ]
+
+    if not args.fine_tune:
+        train_cmd.append("--no-fine-tune")
 
     eval_cmd = [
         python_exec,

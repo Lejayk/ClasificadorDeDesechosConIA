@@ -71,6 +71,12 @@ Para cumplir todo el flujo solicitado (split reproducible train/test + entrenami
 python run_pipeline.py --raw-dir data/raw --epochs 20 --batch-size 32 --overwrite-split
 ```
 
+Ejemplo recomendado con fine-tuning (2 fases):
+
+```bash
+python run_pipeline.py --raw-dir data/raw/dataset-resized --epochs 20 --fine-tune-epochs 10 --base-learning-rate 0.001 --fine-tune-learning-rate 0.00001 --unfreeze-layers 30 --batch-size 32 --overwrite-split
+```
+
 Este pipeline realiza:
 
 - Validación del dataset por carpetas de clase.
@@ -120,6 +126,22 @@ Ejecutar:
 ```bash
 streamlit run app.py
 ```
+
+## Guía rápida para levantar la web local (paso a paso)
+
+1. Abre terminal en la carpeta del proyecto.
+2. Verifica que el modelo exista en `models/waste_classifier.h5`.
+3. Inicia la web local:
+
+```bash
+streamlit run app.py
+```
+
+4. Se abrirá una URL local (normalmente `http://localhost:8501`).
+5. Pulsa "Selecciona una imagen" y carga una foto de residuo.
+6. Verás la clase predicha y la confianza.
+
+Si no abre sola, copia la URL local que aparece en terminal y pégala en tu navegador.
 
 ## Parámetros útiles
 
