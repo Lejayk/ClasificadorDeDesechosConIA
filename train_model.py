@@ -6,8 +6,10 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications import MobileNetV2
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -70,6 +72,17 @@ def merge_histories(first: dict, second: dict) -> dict:
     return merged
 
 
+def compute_class_weights(train_generator) -> dict[int, float]:
+    classes = train_generator.classes
+    unique_classes = np.array(sorted(set(classes.tolist())), dtype=np.int64)
+    weights = compute_class_weight(
+        class_weight="balanced",
+        classes=unique_classes,
+        y=classes
+    )
+    return {int(class_id): float(weight) for class_id, weight in zip(unique_classes, weights)}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Entrenamiento de clasificador de residuos")
     parser.add_argument("--data-dir", type=str, default="data/raw", help="Directorio con dataset por carpetas de clase")
@@ -81,6 +94,7 @@ def main() -> None:
     parser.add_argument("--fine-tune-learning-rate", type=float, default=1e-5, help="Learning rate fase 2")
     parser.add_argument("--unfreeze-layers", type=int, default=30, help="Número de capas finales de MobileNetV2 a descongelar")
     parser.add_argument("--patience", type=int, default=6, help="Paciencia para EarlyStopping")
+    parser.add_argument("--use-class-weights", action=argparse.BooleanOptionalAction, default=True, help="Usar pesos de clase balanceados")
     parser.add_argument("--model-output", type=str, default="models/waste_classifier.h5", help="Ruta de salida del modelo")
     parser.add_argument("--history-output", type=str, default="models/training_history.csv", help="Ruta de salida del historial")
     parser.add_argument("--classes-output", type=str, default="models/class_indices.json", help="Ruta de salida del mapeo de clases")
@@ -101,7 +115,10 @@ def main() -> None:
     train_datagen = ImageDataGenerator(
         rescale=1.0 / 255.0,
         rotation_range=20,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
         zoom_range=0.2,
+        brightness_range=(0.85, 1.15),
         horizontal_flip=True,
         validation_split=0.2
     )
@@ -128,12 +145,20 @@ def main() -> None:
     compile_model(model, args.base_learning_rate)
     model.summary()
 
+    class_weight = None
+    if args.use_class_weights:
+        class_weight = compute_class_weights(train_generator)
+        print("\nPesos de clase (balanceados):")
+        for class_name, class_index in sorted(train_generator.class_indices.items(), key=lambda item: item[1]):
+            print(f"- {class_name}: {class_weight[class_index]:.4f}")
+
     print("\nFase 1/2: entrenamiento de la cabeza clasificadora")
     phase_1_history = model.fit(
         train_generator,
         validation_data=val_generator,
         epochs=args.epochs,
         callbacks=create_callbacks(args.patience),
+        class_weight=class_weight,
         verbose=1
     )
 
@@ -158,6 +183,7 @@ def main() -> None:
             epochs=args.epochs + args.fine_tune_epochs,
             initial_epoch=args.epochs,
             callbacks=create_callbacks(args.patience),
+            class_weight=class_weight,
             verbose=1
         )
 

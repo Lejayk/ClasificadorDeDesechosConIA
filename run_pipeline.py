@@ -112,6 +112,7 @@ def main() -> None:
     parser.add_argument("--fine-tune-learning-rate", type=float, default=1e-5, help="Learning rate fase 2")
     parser.add_argument("--unfreeze-layers", type=int, default=30, help="Capas finales a descongelar")
     parser.add_argument("--patience", type=int, default=6, help="Paciencia de EarlyStopping")
+    parser.add_argument("--use-class-weights", action=argparse.BooleanOptionalAction, default=True, help="Usar pesos de clase balanceados")
     parser.add_argument("--model-output", type=str, default="models/waste_classifier.h5", help="Ruta de modelo")
     parser.add_argument("--history-output", type=str, default="models/training_history.csv", help="Ruta historial")
     parser.add_argument("--classes-output", type=str, default="models/class_indices.json", help="Ruta de clases")
@@ -164,6 +165,8 @@ def main() -> None:
 
     if not args.fine_tune:
         train_cmd.append("--no-fine-tune")
+    if not args.use_class_weights:
+        train_cmd.append("--no-use-class-weights")
 
     eval_cmd = [
         python_exec,
